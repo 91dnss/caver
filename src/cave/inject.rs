@@ -251,6 +251,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
     ));
 
     let fill = opts.fill.value_for(elf.arch()?);
+
     out.extend(std::iter::repeat(fill).take(opts.size));
     out.extend_from_slice(&new_shstrtab);
     out.extend_from_slice(&new_strtab);
@@ -274,6 +275,12 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         size: opts.size,
         name: opts.name.clone(),
     };
+
+    validate_output(
+        &out,
+        (phdr_count + 1) as u16,
+        (shdr_count as u64 + extra_shdrs) as u16,
+    )?;
 
     Ok((out, info))
 }
@@ -301,4 +308,45 @@ pub fn inject_many(elf: &ElfFile, opts: &[CaveOptions]) -> Result<(Vec<u8>, Vec<
     }
 
     Ok((bytes, infos))
+}
+
+fn validate_output(data: &[u8], expected_phnum: u16, expected_shnum: u16) -> Result<()> {
+    let parsed = ElfFile64::<Endianness>::parse(data)?;
+    let endian = parsed.endian();
+    let elf_header = parsed.elf_header();
+    let actual_phnum = elf_header.e_phnum(endian);
+    let actual_shnum = elf_header.e_shnum(endian);
+
+    if actual_phnum != expected_phnum {
+        return Err(CaverError::ValidationFailed(format!(
+            "e_phnum: expected {expected_phnum}, got {actual_phnum}"
+        )));
+    }
+
+    if actual_shnum != expected_shnum {
+        return Err(CaverError::ValidationFailed(format!(
+            "e_shnum: expected {expected_shnum}, got {actual_shnum}"
+        )));
+    }
+
+    // All LOAD segments must have non-zero filesz
+    for ph in parsed.elf_program_headers() {
+        if ph.p_type(endian) == PT_LOAD && ph.p_filesz(endian) == 0 {
+            return Err(CaverError::ValidationFailed(
+                "LOAD segment with zero filesz".into(),
+            ));
+        }
+    }
+
+    // shstrtab must still be resolvable
+    let sections = elf_header.section_headers(endian, data)?;
+    let shstrndx = resolve_shstrndx(endian, elf_header, sections)?;
+
+    if sections.get(shstrndx).is_none() {
+        return Err(CaverError::ValidationFailed(
+            "shstrndx out of bounds".into(),
+        ));
+    }
+
+    Ok(())
 }
