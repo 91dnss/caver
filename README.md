@@ -95,7 +95,7 @@ fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
     // single cave
-    let opts = CaveOptions::new(512, ".mycode", FillByte::Nop)?;
+    let opts = CaveOptions::new(512, ".mycode", FillByte::ArchNop)?;
     let (patched, info) = inject(&elf, &opts)?;
 
     println!("{info}");
@@ -103,7 +103,7 @@ fn main() -> caver::error::Result<()> {
 
     // multiple caves in one pass
     let (patched, infos) = inject_many(&elf, &[
-        CaveOptions::new(512, ".mycode", FillByte::Nop)?,
+        CaveOptions::new(512, ".mycode", FillByte::ArchNop)?,
         CaveOptions::new(256, ".mydata", FillByte::Zero)?,
     ])?;
 
