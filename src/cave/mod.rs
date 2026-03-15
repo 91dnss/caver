@@ -9,4 +9,4 @@ pub use inject::{inject, inject_many};
 pub use inspection::{
     ExistingCave, SectionInfo, SegmentInfo, find_caves, list_sections, list_segments,
 };
-pub use types::{CaveInfo, CaveOptions, FillByte};
+pub use types::{CaveInfo, CaveOptions, FillByte, PatchedElf};

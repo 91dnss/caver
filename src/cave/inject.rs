@@ -1,6 +1,7 @@
 //! Code cave construction and LOAD segment injection.
 
 use super::binary::resolve_shstrndx;
+use super::types::PatchedElf;
 use object::Endianness;
 use object::elf::*;
 use object::read::elf::{ElfFile64, FileHeader, ProgramHeader, SectionHeader};
@@ -14,7 +15,7 @@ use crate::elf::ElfFile;
 use crate::error::{CaverError, Result};
 
 /// Injects a code cave into `elf` according to `opts`, returning modified bytes and [`CaveInfo`].
-pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> {
+pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
     let parsed = ElfFile64::<Endianness>::parse(elf.data.as_slice())?;
     let endian = parsed.endian();
 
@@ -299,32 +300,31 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         (shdr_count as u64 + extra_shdrs) as u16,
     )?;
 
-    Ok((out, info))
+    Ok(PatchedElf::new(out, vec![info]))
 }
 
 /// Injects multiple code caves in sequence, each built on top of the previous result.
 ///
 /// Caves are applied in `opts` order. On the first error the function returns
 /// immediately; successfully injected caves up to that point are discarded.
-pub fn inject_many(elf: &ElfFile, opts: &[CaveOptions]) -> Result<(Vec<u8>, Vec<CaveInfo>)> {
+pub fn inject_many(elf: &ElfFile, opts: &[CaveOptions]) -> Result<PatchedElf> {
     if opts.is_empty() {
-        return Ok((elf.data.clone(), vec![]));
+        return Ok(PatchedElf::new(elf.data.clone(), vec![]));
     }
 
     let mut infos = Vec::with_capacity(opts.len());
-    let (mut bytes, info) = inject(elf, &opts[0])?;
-
-    infos.push(info);
+    let first = inject(elf, &opts[0])?;
+    infos.push(first.infos[0].clone());
+    let mut bytes = first.data;
 
     for opt in &opts[1..] {
         let next_elf = ElfFile::from_bytes(bytes)?;
-        let (new_bytes, info) = inject(&next_elf, opt)?;
-
-        bytes = new_bytes;
-        infos.push(info);
+        let result = inject(&next_elf, opt)?;
+        infos.push(result.infos[0].clone());
+        bytes = result.data;
     }
 
-    Ok((bytes, infos))
+    Ok(PatchedElf::new(bytes, infos))
 }
 
 fn validate_output(data: &[u8], expected_phnum: u16, expected_shnum: u16) -> Result<()> {

@@ -2,6 +2,7 @@
 
 use crate::arch::Arch;
 use crate::error::{CaverError, Result};
+use std::path::Path;
 
 /// Fill pattern used to populate the code cave.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,7 +45,7 @@ pub struct CaveOptions {
 
 impl CaveOptions {
     /// Creates a new [`CaveOptions`] using the builder API.
-    pub fn builder() -> CaveOptionsBuilder {
+    pub fn default() -> CaveOptionsBuilder {
         CaveOptionsBuilder::default()
     }
 
@@ -117,5 +118,33 @@ impl CaveOptionsBuilder {
         let fill = self.fill.unwrap_or(FillByte::ArchNop);
 
         CaveOptions::new(size, name, fill)
+    }
+}
+
+/// The result of a cave injection operation.
+pub struct PatchedElf {
+    pub(crate) data: Vec<u8>,
+    pub(crate) infos: Vec<CaveInfo>,
+}
+
+impl PatchedElf {
+    pub(crate) fn new(data: Vec<u8>, infos: Vec<CaveInfo>) -> Self {
+        Self { data, infos }
+    }
+
+    /// Returns metadata for the single injected cave.
+    /// Use [`infos`] for multiple caves.
+    pub fn info(&self) -> &CaveInfo {
+        &self.infos[0]
+    }
+
+    /// Returns metadata for all injected caves.
+    pub fn infos(&self) -> &[CaveInfo] {
+        &self.infos
+    }
+
+    /// Writes the patched binary to `path`.
+    pub fn write(&self, path: impl AsRef<Path>) -> Result<()> {
+        Ok(std::fs::write(path, &self.data)?)
     }
 }
