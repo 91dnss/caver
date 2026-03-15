@@ -1,0 +1,31 @@
+[package]
+name = "caver"
+version = "0.1.0"
+edition = "2024"
+description = "ELF64 code cave injection library"
+license = "MIT"
+repository = "https://github.com/91dnss/caver"
+homepage = "https://github.com/91dnss/caver"
+documentation = "https://docs.rs/caver"
+readme = "README.md"
+keywords = ["elf", "binary", "patching", "reverse-engineering", "code-cave"]
+categories = ["development-tools"]
+exclude = [".gitignore"]
+
+[dependencies]
+object = { version = "0.38.1", features = ["read", "write"] }
+thiserror = "2.0.18"
+
+[lib]
+name = "caver"
+path = "src/lib.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
