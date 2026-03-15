@@ -108,24 +108,19 @@ fn main() -> caver::error::Result {
 
 You can inspect the layout of an ELF file and search for existing code caves before injecting:
 ```rust
-use caver::cave::{find_caves, list_sections, list_segments};
 use caver::elf::ElfFile;
 
-fn main() -> caver::error::Result {
+fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
-    for s in list_sections(&elf)? {
+    for s in elf.sections()? {
         println!("{s}");
     }
-
-    for s in list_segments(&elf)? {
+    for s in elf.segments()? {
         println!("{s}");
     }
-
-    for cave in find_caves(&elf, 64)? {
-        if let Some(vma) = cave.vma {
-            println!("vma={:#x} size={}", vma, cave.size);
-        }
+    for cave in elf.find_caves(64)? {
+        println!("{cave}");
     }
 
     Ok(())
