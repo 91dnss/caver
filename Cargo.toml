@@ -16,10 +16,6 @@ exclude = [".gitignore"]
 object = { version = "0.38.1", features = ["read", "write"] }
 thiserror = "2.0.18"
 
-[lib]
-name = "caver"
-path = "src/lib.rs"
-
 [profile.release]
 opt-level = 3
 lto = true
