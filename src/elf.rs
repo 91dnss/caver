@@ -1,11 +1,9 @@
 //! ELF64 parsing and validation helpers.
 
+use crate::arch::Arch;
 use crate::error::{CaverError, Result};
 use object::{Object, ObjectKind};
 use std::path::Path;
-
-/// x86_64 architecture identifier in the ELF header.
-const EM_X86_64: u16 = 0x3E;
 
 /// A parsed and validated ELF64 little endian binary.
 pub struct ElfFile {
@@ -29,6 +27,16 @@ impl ElfFile {
         Ok(Self { data: bytes })
     }
 
+    /// Returns the parsed ELF architecture.
+    pub fn arch(&self) -> Result<Arch> {
+        if self.data.len() < 0x14 {
+            return Err(CaverError::NotElf64);
+        }
+
+        let e_machine = u16::from_le_bytes([self.data[0x12], self.data[0x13]]);
+        Arch::from_e_machine(e_machine)
+    }
+
     /// Returns a parsed [`object::File`] view over raw bytes.
     pub fn parsed(&self) -> Result<object::File<'_>> {
         Ok(object::File::parse(self.data.as_slice())?)
@@ -47,14 +55,13 @@ fn validate_elf64(data: &[u8]) -> Result<()> {
         return Err(CaverError::NotElf64);
     }
 
-    // e_machine at offset 0x12 — must be x86_64
+    // e_machine at offset 0x12 — must be a supported architecture
     let e_machine = u16::from_le_bytes([data[0x12], data[0x13]]);
-    if e_machine != EM_X86_64 {
-        return Err(CaverError::UnsupportedArch(e_machine));
-    }
+    Arch::from_e_machine(e_machine)?;
 
     // Double check via object crate
     let parsed = object::File::parse(data)?;
+
     if parsed.kind() == ObjectKind::Unknown {
         return Err(CaverError::NotElf64);
     }

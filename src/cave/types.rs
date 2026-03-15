@@ -5,7 +5,7 @@ use crate::error::{CaverError, Result};
 /// Fill pattern used to populate the code cave.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FillByte {
-    /// 0x90 — x86 NOP instruction.
+    /// 0x90 — x86_64 NOP instruction.
     Nop,
     /// 0x00 — null byte.
     Zero,

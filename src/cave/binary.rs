@@ -1,7 +1,7 @@
 //! Low-level ELF64 serialisation and binary patching helpers.
 //!
 //! All builders return owned `Vec<u8>` with the exact capacity pre-allocated.
-//! Byte order is always little-endian (x86-64 target only).
+//! Byte order is always little-endian (current support only).
 
 use object::Endianness;
 use object::elf::{ProgramHeader64, SectionHeader64};
