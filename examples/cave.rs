@@ -7,7 +7,7 @@ fn main() -> caver::error::Result<()> {
     let (patched, infos) = inject_many(
         &elf,
         &[
-            CaveOptions::new(1024, ".cave1", FillByte::Nop)?,
+            CaveOptions::new(1024, ".cave1", FillByte::ArchNop)?,
             CaveOptions::new(512, ".cave2", FillByte::Zero)?,
         ],
     )?;
