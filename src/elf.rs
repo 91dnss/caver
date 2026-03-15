@@ -1,6 +1,8 @@
 //! ELF64 parsing and validation helpers.
 
 use crate::arch::Arch;
+use crate::cave::inspection::{ExistingCave, SectionInfo, SegmentInfo};
+use crate::cave::inspection::{find_caves, list_sections, list_segments};
 use crate::error::{CaverError, Result};
 use object::{Object, ObjectKind};
 use std::path::Path;
@@ -40,6 +42,18 @@ impl ElfFile {
     /// Returns a parsed [`object::File`] view over raw bytes.
     pub fn parsed(&self) -> Result<object::File<'_>> {
         Ok(object::File::parse(self.data.as_slice())?)
+    }
+
+    pub fn sections(&self) -> Result<Vec<SectionInfo>> {
+        list_sections(self)
+    }
+
+    pub fn segments(&self) -> Result<Vec<SegmentInfo>> {
+        list_segments(self)
+    }
+
+    pub fn find_caves(&self, min_size: usize) -> Result<Vec<ExistingCave>> {
+        find_caves(self, min_size)
     }
 }
 
