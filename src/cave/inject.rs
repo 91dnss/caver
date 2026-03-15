@@ -266,9 +266,10 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         align,
     ));
 
-    let fill = opts.fill.value_for(elf.arch()?);
+    let fill = opts.fill.fill_bytes_for(elf.arch()?);
+    let tiled = fill.iter().cycle().take(opts.size).copied();
 
-    out.extend(std::iter::repeat(fill).take(opts.size));
+    out.extend(tiled);
     out.extend_from_slice(&new_shstrtab);
     out.extend_from_slice(&new_strtab);
     out.extend_from_slice(&new_symtab);

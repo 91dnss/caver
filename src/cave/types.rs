@@ -17,16 +17,16 @@ pub enum FillByte {
 
 impl FillByte {
     /// Returns the raw byte value for this fill pattern.
-    pub fn value(self) -> u8 {
-        // Backward-compatible default while only x86_64 is supported.
-        self.value_for(Arch::X86_64)
+    pub fn value(self) -> &'static [u8] {
+        // Backward-compatible default while only x86_64 is supported
+        self.fill_bytes_for(Arch::X86_64)
     }
 
     /// Returns the raw byte value for this fill pattern for `arch`.
-    pub fn value_for(self, arch: Arch) -> u8 {
+    pub fn fill_bytes_for(self, arch: Arch) -> &'static [u8] {
         match self {
             FillByte::ArchNop => arch.nop_fill(),
-            FillByte::Zero => 0x00,
+            FillByte::Zero => &[0x00],
         }
     }
 }
