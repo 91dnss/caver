@@ -2,7 +2,7 @@ use caver::cave::{CaveOptions, FillByte, inject_many};
 use caver::elf::ElfFile;
 
 fn main() -> caver::error::Result<()> {
-    let elf = ElfFile::open("/home/dns/Desktop/main")?;
+    let elf = ElfFile::open("./binary")?;
 
     let (patched, infos) = inject_many(
         &elf,
@@ -16,7 +16,7 @@ fn main() -> caver::error::Result<()> {
         println!("{info}");
     }
 
-    std::fs::write("/home/dns/Desktop/main_patched", &patched)?;
+    std::fs::write("./binary_patched", &patched)?;
 
     Ok(())
 }
