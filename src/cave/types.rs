@@ -1,12 +1,16 @@
 //! Public types for code cave configuration and metadata.
 
+use crate::arch::Arch;
 use crate::error::{CaverError, Result};
 
 /// Fill pattern used to populate the code cave.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FillByte {
-    /// 0x90 — x86_64 NOP instruction.
-    Nop,
+    /// Architecture-specific single-byte NOP instruction.
+    ///
+    /// Currently resolves to x86_64, but will map to other architectures
+    /// as support is added.
+    ArchNop,
     /// 0x00 — null byte.
     Zero,
 }
@@ -14,8 +18,14 @@ pub enum FillByte {
 impl FillByte {
     /// Returns the raw byte value for this fill pattern.
     pub fn value(self) -> u8 {
+        // Backward-compatible default while only x86_64 is supported.
+        self.value_for(Arch::X86_64)
+    }
+
+    /// Returns the raw byte value for this fill pattern for `arch`.
+    pub fn value_for(self, arch: Arch) -> u8 {
         match self {
-            FillByte::Nop => 0x90,
+            FillByte::ArchNop => arch.nop_fill(),
             FillByte::Zero => 0x00,
         }
     }
