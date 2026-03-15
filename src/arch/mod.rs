@@ -3,6 +3,7 @@
 use crate::error::{CaverError, Result};
 
 pub mod aarch64;
+pub mod riscv64;
 pub mod x86_64;
 
 /// Supported ELF64 architectures.
@@ -12,6 +13,8 @@ pub enum Arch {
     X86_64,
     /// AArch64.
     AArch64,
+    /// RISC-V 64-bit.
+    Riscv64,
 }
 
 impl Arch {
@@ -20,6 +23,7 @@ impl Arch {
         match e_machine {
             x86_64::EM_X86_64 => Ok(Arch::X86_64),
             aarch64::EM_AARCH64 => Ok(Arch::AArch64),
+            riscv64::EM_RISCV64 => Ok(Arch::Riscv64),
             _ => Err(CaverError::UnsupportedArch(e_machine)),
         }
     }
@@ -29,6 +33,7 @@ impl Arch {
         match self {
             Arch::X86_64 => "x86_64",
             Arch::AArch64 => "aarch64",
+            Arch::Riscv64 => "riscv64",
         }
     }
 
@@ -37,6 +42,7 @@ impl Arch {
         match self {
             Arch::X86_64 => &[x86_64::NOP],
             Arch::AArch64 => &aarch64::NOP,
+            Arch::Riscv64 => &riscv64::NOP,
         }
     }
 }
