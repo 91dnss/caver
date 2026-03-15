@@ -43,6 +43,11 @@ pub struct CaveOptions {
 }
 
 impl CaveOptions {
+    /// Creates a new [`CaveOptions`] using the builder API.
+    pub fn builder() -> CaveOptionsBuilder {
+        CaveOptionsBuilder::default()
+    }
+
     /// Creates a new [`CaveOptions`], validating size and name constraints.
     pub fn new(size: usize, name: impl Into<String>, fill: FillByte) -> Result<Self> {
         if size == 0 {
@@ -50,6 +55,7 @@ impl CaveOptions {
         }
 
         let name = name.into();
+
         if !name.starts_with('.') {
             return Err(CaverError::InvalidCaveName);
         }
@@ -78,5 +84,38 @@ impl std::fmt::Display for CaveInfo {
             "{} vma={:#x} offset={:#x} size={}",
             self.name, self.vma, self.offset, self.size
         )
+    }
+}
+
+/// Builder for [`CaveOptions`].
+#[derive(Debug, Default)]
+pub struct CaveOptionsBuilder {
+    size: Option<usize>,
+    name: Option<String>,
+    fill: Option<FillByte>,
+}
+
+impl CaveOptionsBuilder {
+    pub fn size(mut self, size: usize) -> Self {
+        self.size = Some(size);
+        self
+    }
+
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    pub fn fill(mut self, fill: FillByte) -> Self {
+        self.fill = Some(fill);
+        self
+    }
+
+    pub fn build(self) -> Result<CaveOptions> {
+        let size = self.size.ok_or(CaverError::InvalidCaveSize)?;
+        let name = self.name.ok_or(CaverError::InvalidCaveName)?;
+        let fill = self.fill.unwrap_or(FillByte::ArchNop);
+
+        CaveOptions::new(size, name, fill)
     }
 }
