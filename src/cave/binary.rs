@@ -3,9 +3,10 @@
 //! All builders return owned `Vec<u8>` with the exact capacity pre-allocated.
 //! Byte order is always little-endian (current support only).
 
+use crate::error::CaverError;
 use object::Endianness;
-use object::elf::{ProgramHeader64, SectionHeader64};
-use object::read::elf::{ProgramHeader, SectionHeader};
+use object::elf::{FileHeader64, ProgramHeader64, SHN_XINDEX, SectionHeader64};
+use object::read::elf::{FileHeader, ProgramHeader, SectionHeader};
 
 /// Size in bytes of an ELF64 program header entry.
 pub const PHDR_SIZE: u64 = 56;
@@ -131,6 +132,24 @@ pub fn build_sym64(
     b.extend_from_slice(&st_size.to_le_bytes());
 
     b
+}
+
+pub fn resolve_shstrndx(
+    endian: Endianness,
+    elf_header: &FileHeader64<Endianness>,
+    sections: &[SectionHeader64<Endianness>],
+) -> Result<usize, CaverError> {
+    let raw = elf_header.e_shstrndx(endian);
+
+    if raw != SHN_XINDEX as u16 {
+        return Ok(raw as usize);
+    }
+
+    // Real index is in sh_link of section 0
+    sections
+        .first()
+        .map(|s| s.sh_link(endian) as usize)
+        .ok_or(CaverError::NotElf64)
 }
 
 /// Writes a `u64` little-endian at `offset` in `data`.

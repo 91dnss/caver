@@ -8,6 +8,7 @@ use object::Endianness;
 use object::elf::*;
 use object::read::elf::{ElfFile64, FileHeader, ProgramHeader, SectionHeader};
 
+use crate::cave::binary::resolve_shstrndx;
 use crate::elf::ElfFile;
 use crate::error::{CaverError, Result};
 
@@ -45,7 +46,7 @@ pub fn list_sections(elf: &ElfFile) -> Result<Vec<SectionInfo>> {
     let sections: &[SectionHeader64<Endianness>] =
         elf_header.section_headers(endian, elf.data.as_slice())?;
 
-    let shstrndx = elf_header.e_shstrndx(endian) as usize;
+    let shstrndx = resolve_shstrndx(endian, elf_header, sections)?;
     let shstrtab_sh = sections.get(shstrndx).ok_or(CaverError::NotElf64)?;
     let shstrtab_off = shstrtab_sh.sh_offset(endian) as usize;
     let shstrtab_sz = shstrtab_sh.sh_size(endian) as usize;

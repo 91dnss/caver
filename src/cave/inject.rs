@@ -1,5 +1,6 @@
 //! Code cave construction and LOAD segment injection.
 
+use super::binary::resolve_shstrndx;
 use object::Endianness;
 use object::elf::*;
 use object::read::elf::{ElfFile64, FileHeader, ProgramHeader, SectionHeader};
@@ -40,9 +41,9 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
     // ── Section headers & string tables ──────────────────────────────────────
 
     let elf_header = parsed.elf_header();
-    let shstrndx = elf_header.e_shstrndx(endian) as usize;
     let sections: &[SectionHeader64<Endianness>] =
         elf_header.section_headers(endian, elf.data.as_slice())?;
+    let shstrndx = resolve_shstrndx(endian, elf_header, sections)?;
 
     let shdr_count = sections.len();
 
