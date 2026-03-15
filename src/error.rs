@@ -22,6 +22,9 @@ pub enum CaverError {
 
     #[error("unsupported architecture (e_machine = {0:#x})")]
     UnsupportedArch(u16),
+
+    #[error("output validation failed: {0}")]
+    ValidationFailed(String),
 }
 
 /// Convenience alias used throughout the crate.
