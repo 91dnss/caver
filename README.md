@@ -22,19 +22,18 @@ use caver::elf::ElfFile;
 fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
-    // list all sections
     for s in list_sections(&elf)? {
         println!("{s}");
     }
 
-    // list all segments
     for s in list_segments(&elf)? {
         println!("{s}");
     }
 
-    // find existing runs of 0x00 or 0x90 >= 64 bytes, largest first
     for cave in find_caves(&elf, 64)? {
-        println!("{cave}");
+        if let Some(vma) = cave.vma {
+            println!("VMA: {:#x}, size: {}", vma, cave.size);
+        }
     }
 
     Ok(())
