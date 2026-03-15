@@ -24,6 +24,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         .iter()
         .flat_map(|ph| serialise_phdr(ph, endian))
         .collect();
+
     let phdr_count = parsed.elf_program_headers().len();
 
     let last_load = parsed
@@ -248,7 +249,8 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         align,
     ));
 
-    out.extend(std::iter::repeat(opts.fill.value()).take(opts.size));
+    let fill = opts.fill.value_for(elf.arch()?);
+    out.extend(std::iter::repeat(fill).take(opts.size));
     out.extend_from_slice(&new_shstrtab);
     out.extend_from_slice(&new_strtab);
     out.extend_from_slice(&new_symtab);
