@@ -20,7 +20,7 @@ pub enum CaverError {
     #[error("cave name must start with '.'")]
     InvalidCaveName,
 
-    #[error("unsupported architecture: expected x86_64 (e_machine = {0:#x})")]
+    #[error("unsupported architecture (e_machine = {0:#x})")]
     UnsupportedArch(u16),
 }
 
