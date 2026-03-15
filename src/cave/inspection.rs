@@ -38,7 +38,7 @@ impl std::fmt::Display for SectionInfo {
 }
 
 /// Returns all sections in `elf`, in section-header-table order.
-pub fn list_sections(elf: &ElfFile) -> Result<Vec<SectionInfo>> {
+pub(crate) fn list_sections(elf: &ElfFile) -> Result<Vec<SectionInfo>> {
     let parsed = ElfFile64::<Endianness>::parse(elf.data.as_slice())?;
     let endian = parsed.endian();
     let elf_header = parsed.elf_header();
@@ -99,7 +99,7 @@ impl std::fmt::Display for SegmentInfo {
 }
 
 /// Returns all segments in `elf`, in program-header-table order.
-pub fn list_segments(elf: &ElfFile) -> Result<Vec<SegmentInfo>> {
+pub(crate) fn list_segments(elf: &ElfFile) -> Result<Vec<SegmentInfo>> {
     let parsed = ElfFile64::<Endianness>::parse(elf.data.as_slice())?;
     let endian = parsed.endian();
 
@@ -150,7 +150,7 @@ impl std::fmt::Display for ExistingCave {
 /// Results are sorted by size descending so the largest caves appear first.
 /// Only LOAD segments are considered when resolving VMAs; runs that fall
 /// entirely outside any LOAD segment still appear but with `vma = None`.
-pub fn find_caves(elf: &ElfFile, min_size: usize) -> Result<Vec<ExistingCave>> {
+pub(crate) fn find_caves(elf: &ElfFile, min_size: usize) -> Result<Vec<ExistingCave>> {
     if min_size == 0 {
         return Err(CaverError::InvalidCaveSize);
     }
