@@ -4,7 +4,7 @@ ELF64 code cave injection library for Rust.
 
 `caver` creates executable code caves in ELF64 binaries by **appending a new loadable segment**. This is useful when a binary has little or no natural slack space for patching or instrumentation.
 
-The injected cave is exported as a `STT_FUNC` symbol (for example `caverfn_mycode`), allowing reverse-engineering tools such as Binary Ninja, Ghidra, and IDA Pro to automatically detect it as a function.
+The injected cave is exported as a `STT_FUNC` symbol (for example `caverfn_mycode`), allowing reverse-engineering tools such as Binary Ninja, Ghidra, and IDA Pro to automatically detect it as a function entry point.
 
 The library focuses only on **structural ELF modification** (creating space for new code). Assembly payloads, hooks, and patching are intended to be written inside a disassembler after injection.
 
@@ -41,12 +41,17 @@ Example tools used with this workflow include:
 * Ghidra
 * IDA Pro
 
-Because the cave is exported as a function symbol, most disassemblers will automatically recognize it as a function entry point.
+## Supported Architectures
+
+* x86_64
+* AArch64
+* RISC-V 64
+
+All architectures require ELF64 little-endian binaries.
 
 ## Install
 
 Add the crate to your project:
-
 ```toml
 [dependencies]
 caver = "0.1"
@@ -54,15 +59,59 @@ caver = "0.1"
 
 ## Usage
 
+### Inject a cave
+```rust
+use caver::cave::{CaveOptions, FillByte, inject};
+use caver::elf::ElfFile;
+
+fn main() -> caver::error::Result {
+    let elf = ElfFile::open("./binary")?;
+
+    let opts = CaveOptions::builder()
+        .size(512)
+        .name(".mycode")
+        .fill(FillByte::ArchNop)
+        .build()?;
+
+    let patched = inject(&elf, &opts)?;
+    println!("{}", patched.info());
+    patched.write("./binary_patched")?;
+
+    Ok(())
+}
+```
+
+### Inject multiple caves
+```rust
+use caver::cave::{CaveOptions, FillByte, inject_many};
+use caver::elf::ElfFile;
+
+fn main() -> caver::error::Result {
+    let elf = ElfFile::open("./binary")?;
+
+    let patched = inject_many(&elf, &[
+        CaveOptions::builder().size(512).name(".mycode").build()?,
+        CaveOptions::builder().size(256).name(".mydata").fill(FillByte::Zero).build()?,
+    ])?;
+
+    for info in patched.infos() {
+        println!("{info}");
+    }
+
+    patched.write("./binary_patched")?;
+
+    Ok(())
+}
+```
+
 ### Inspect an existing binary
 
-You can inspect the layout of an ELF file and search for existing code caves.
-
+You can inspect the layout of an ELF file and search for existing code caves before injecting:
 ```rust
 use caver::cave::{find_caves, list_sections, list_segments};
 use caver::elf::ElfFile;
 
-fn main() -> caver::error::Result<()> {
+fn main() -> caver::error::Result {
     let elf = ElfFile::open("./binary")?;
 
     for s in list_sections(&elf)? {
@@ -75,7 +124,7 @@ fn main() -> caver::error::Result<()> {
 
     for cave in find_caves(&elf, 64)? {
         if let Some(vma) = cave.vma {
-            println!("VMA: {:#x}, size: {}", vma, cave.size);
+            println!("vma={:#x} size={}", vma, cave.size);
         }
     }
 
@@ -83,78 +132,19 @@ fn main() -> caver::error::Result<()> {
 }
 ```
 
-### Inject a new cave
-
-Create a new executable cave by appending a loadable segment.
-
-```rust
-use caver::cave::{CaveOptions, FillByte, inject, inject_many};
-use caver::elf::ElfFile;
-
-fn main() -> caver::error::Result<()> {
-    let elf = ElfFile::open("./binary")?;
-
-    // single cave
-    let opts = CaveOptions::new(512, ".mycode", FillByte::ArchNop)?;
-    let (patched, info) = inject(&elf, &opts)?;
-
-    println!("{info}");
-    std::fs::write("./binary_patched", &patched)?;
-
-    // multiple caves in one pass
-    let (patched, infos) = inject_many(&elf, &[
-        CaveOptions::new(512, ".mycode", FillByte::ArchNop)?,
-        CaveOptions::new(256, ".mydata", FillByte::Zero)?,
-    ])?;
-
-    for info in &infos {
-        println!("{info}");
-    }
-
-    std::fs::write("./binary_patched", &patched)?;
-
-    Ok(())
-}
-```
-
-The returned `info` contains metadata about the injected cave such as its virtual address, size, and generated symbol name.
-
 ## Cave Symbols
 
 Each injected cave is exported as a symbol with the prefix:
-
 ```
 caverfn_<section_name>
 ```
 
-For example:
-
+For example, injecting `.mycode` produces:
 ```
 caverfn_mycode
 ```
 
-Because the symbol type is `STT_FUNC`, most disassemblers will treat it as a function entry point automatically.
-
-This makes the cave easy to locate when loading the patched binary.
-
-## Finding Natural Caves
-
-Although `caver` primarily exists to create new executable space, it can also locate existing unused regions in a binary.
-
-The `find_caves` function scans segments for unused regions that may already be suitable for patching.
-
-## Supported Format
-
-Currently supported:
-
-* ELF64 binaries
-
-Tested primarily with:
-
-* Linux x86_64
-
-Other ELF64 architectures may work but are not guaranteed.
-
 ## License
 
 MIT
+```
