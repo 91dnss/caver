@@ -25,14 +25,28 @@ pub struct SectionInfo {
     pub size: u64,
     /// Section type (`sh_type`), e.g. `SHT_PROGBITS`.
     pub sh_type: u32,
+    /// Section flags (`sh_flags`).
+    pub sh_flags: u64,
+}
+
+impl SectionInfo {
+    /// Returns true if the section is marked executable (SHF_EXECINSTR).
+    pub fn is_executable(&self) -> bool {
+        self.sh_flags & (SHF_EXECINSTR as u64) != 0
+    }
+
+    /// Returns true if the section is marked writable (SHF_WRITE).
+    pub fn is_writable(&self) -> bool {
+        self.sh_flags & (SHF_WRITE as u64) != 0
+    }
 }
 
 impl std::fmt::Display for SectionInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} vma={:#x} offset={:#x} size={} type={:#x}",
-            self.name, self.vma, self.offset, self.size, self.sh_type
+            "{} vma={:#x} offset={:#x} size={} type={:#x} flags={:#x}",
+            self.name, self.vma, self.offset, self.size, self.sh_type, self.sh_flags
         )
     }
 }
@@ -66,6 +80,7 @@ pub(crate) fn list_sections(elf: &ElfFile) -> Result<Vec<SectionInfo>> {
                 offset: sh.sh_offset(endian),
                 size: sh.sh_size(endian),
                 sh_type: sh.sh_type(endian),
+                sh_flags: sh.sh_flags(endian) as u64,
             })
         })
         .collect()
@@ -86,6 +101,18 @@ pub struct SegmentInfo {
     pub memsz: u64,
     /// Segment flags (`p_flags`), e.g. `PF_R | PF_X`.
     pub flags: u32,
+}
+
+impl SegmentInfo {
+    /// Returns true if the segment is executable (PF_X).
+    pub fn is_executable(&self) -> bool {
+        self.flags & PF_X != 0
+    }
+
+    /// Returns true if the segment is writable (PF_W).
+    pub fn is_writable(&self) -> bool {
+        self.flags & PF_W != 0
+    }
 }
 
 impl std::fmt::Display for SegmentInfo {
@@ -142,6 +169,13 @@ impl std::fmt::Display for ExistingCave {
             "vma={} offset={:#x} size={} fill={:#04x}",
             vma, self.offset, self.size, self.fill
         )
+    }
+}
+
+impl ExistingCave {
+    /// Returns true if this cave falls within an executable segment.
+    pub fn is_executable(&self) -> bool {
+        self.vma.is_some()
     }
 }
 
