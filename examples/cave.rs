@@ -4,19 +4,23 @@ use caver::elf::ElfFile;
 fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
-    let (patched, infos) = inject_many(
+    let patched = inject_many(
         &elf,
         &[
-            CaveOptions::new(1024, ".cave1", FillByte::ArchNop)?,
-            CaveOptions::new(512, ".cave2", FillByte::Zero)?,
+            CaveOptions::default().size(512).name(".mycode").build()?,
+            CaveOptions::default()
+                .size(256)
+                .name(".mydata")
+                .fill(FillByte::Zero)
+                .build()?,
         ],
     )?;
 
-    for info in &infos {
+    for info in patched.infos() {
         println!("{info}");
     }
 
-    std::fs::write("./binary_patched", &patched)?;
+    patched.write("./binary_patched")?;
 
     Ok(())
 }
