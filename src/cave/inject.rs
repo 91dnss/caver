@@ -20,13 +20,31 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
 
     // ── Phdr ─────────────────────────────────────────────────────────────────
 
+    let phdr_count = parsed.elf_program_headers().len();
+    let orig_len = elf.data.len() as u64;
+    let new_phdr_table_offset = orig_len;
+    let new_phdr_table_size = (phdr_count as u64 + 1) * PHDR_SIZE;
+
     let existing_phdrs: Vec<u8> = parsed
         .elf_program_headers()
         .iter()
-        .flat_map(|ph| serialise_phdr(ph, endian))
+        .flat_map(|ph| {
+            if ph.p_type(endian) == PT_PHDR {
+                make_phdr(
+                    PT_PHDR,
+                    ph.p_flags(endian),
+                    new_phdr_table_offset,
+                    new_phdr_table_offset, // vaddr == offset for non-PIE; good enough
+                    new_phdr_table_offset,
+                    new_phdr_table_size,
+                    new_phdr_table_size,
+                    ph.p_align(endian),
+                )
+            } else {
+                serialise_phdr(ph, endian)
+            }
+        })
         .collect();
-
-    let phdr_count = parsed.elf_program_headers().len();
 
     let last_load = parsed
         .elf_program_headers()
@@ -43,8 +61,8 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
     let elf_header = parsed.elf_header();
     let sections: &[SectionHeader64<Endianness>] =
         elf_header.section_headers(endian, elf.data.as_slice())?;
-    let shstrndx = resolve_shstrndx(endian, elf_header, sections)?;
 
+    let shstrndx = resolve_shstrndx(endian, elf_header, sections)?;
     let shdr_count = sections.len();
 
     let symtab_idx = sections
@@ -78,6 +96,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         let sz = sh.sh_size(endian) as usize;
         let mut st = elf.data[off..off + sz].to_vec();
         let name_off = st.len() as u32;
+
         st.extend_from_slice(sym_name.as_bytes());
         st.push(0u8);
         (st, name_off)
@@ -85,6 +104,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         // No existing strtab — create a minimal one (leading null + name)
         let mut st = vec![0u8];
         let name_off = 1u32;
+
         st.extend_from_slice(sym_name.as_bytes());
         st.push(0u8);
         (st, name_off)
@@ -107,22 +127,18 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         let off = sh.sh_offset(endian) as usize;
         let sz = sh.sh_size(endian) as usize;
         let mut st = elf.data[off..off + sz].to_vec();
+
         st.extend_from_slice(&new_sym);
         st
     } else {
-        // No existing symtab — create one with a mandatory null entry followed by the new symbol
         let mut st = vec![0u8; 24];
+
         st.extend_from_slice(&new_sym);
         st
     };
 
     // ── Layout ───────────────────────────────────────────────────────────────
 
-    let orig_len = elf.data.len() as u64;
-
-    // All new data is appended after the original image in this order:
-    //   [ existing phdrs ] [ new cave phdr ] [ cave bytes ]
-    //   [ shstrtab ] [ strtab ] [ symtab ] [ shdr table ]
     let new_phdr_table_offset = orig_len;
     let new_phdr_table_size = (phdr_count as u64 + 1) * PHDR_SIZE;
     let cave_file_offset = new_phdr_table_offset + new_phdr_table_size;
@@ -132,7 +148,6 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
     let new_strtab_offset = new_shstrtab_offset + new_shstrtab.len() as u64;
     let new_symtab_offset = new_strtab_offset + new_strtab.len() as u64;
 
-    // +1 for the cave section itself; +2 more if we're creating strtab/symtab from scratch
     let extra_shdrs: u64 = 1 + if symtab_idx.is_none() { 2 } else { 0 };
     let new_shdr_table_offset = new_symtab_offset + new_symtab.len() as u64;
 
@@ -239,6 +254,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
     let mut out = elf.data.clone();
 
     out.extend_from_slice(&existing_phdrs);
+
     out.extend_from_slice(&make_phdr(
         PT_LOAD,
         PF_R | PF_X,
