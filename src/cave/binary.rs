@@ -7,8 +7,6 @@ use object::Endianness;
 use object::elf::{ProgramHeader64, SectionHeader64};
 use object::read::elf::{ProgramHeader, SectionHeader};
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
 /// Size in bytes of an ELF64 program header entry.
 pub const PHDR_SIZE: u64 = 56;
 /// Size in bytes of an ELF64 section header entry.
@@ -16,16 +14,12 @@ pub const SHDR_SIZE: u64 = 64;
 /// Size in bytes of an ELF64 symbol table entry.
 pub const SYM_SIZE: u64 = 24;
 
-// ── Alignment ─────────────────────────────────────────────────────────────────
-
 /// Rounds `val` up to the nearest multiple of `align`.
 ///
 /// `align` must be a power of two.
 pub fn align_up(val: u64, align: u64) -> u64 {
     (val + align - 1) & !(align - 1)
 }
-
-// ── Program header ────────────────────────────────────────────────────────────
 
 /// Serialises a parsed [`ProgramHeader64`] back to [`PHDR_SIZE`] raw little-endian bytes.
 pub fn serialise_phdr(ph: &ProgramHeader64<Endianness>, e: Endianness) -> Vec<u8> {
@@ -68,8 +62,6 @@ pub fn make_phdr(
 
     b
 }
-
-// ── Section header ────────────────────────────────────────────────────────────
 
 /// Serialises a parsed [`SectionHeader64`] back to [`SHDR_SIZE`] raw little-endian bytes.
 pub fn serialise_shdr(sh: &SectionHeader64<Endianness>, e: Endianness) -> Vec<u8> {
@@ -117,8 +109,6 @@ pub fn build_shdr(
     b
 }
 
-// ── Symbol table ──────────────────────────────────────────────────────────────
-
 /// Builds a raw [`SYM_SIZE`]-byte ELF64 symbol table entry (`Elf64_Sym`).
 ///
 /// `st_info` should be constructed via the standard ELF macro:
@@ -142,8 +132,6 @@ pub fn build_sym64(
 
     b
 }
-
-// ── In-place patching ─────────────────────────────────────────────────────────
 
 /// Writes a `u64` little-endian at `offset` in `data`.
 pub fn write_u64_le(data: &mut [u8], offset: usize, val: u64) {
