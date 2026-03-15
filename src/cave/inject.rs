@@ -1,5 +1,9 @@
 //! Code cave construction and LOAD segment injection.
 
+use object::Endianness;
+use object::elf::*;
+use object::read::elf::{ElfFile64, FileHeader, ProgramHeader, SectionHeader};
+
 use super::binary::{
     PHDR_SIZE, SHDR_SIZE, align_up, build_shdr, build_sym64, make_phdr, serialise_phdr,
     serialise_shdr, write_u16_le, write_u64_le,
@@ -7,9 +11,6 @@ use super::binary::{
 use super::types::{CaveInfo, CaveOptions};
 use crate::elf::ElfFile;
 use crate::error::{CaverError, Result};
-use object::Endianness;
-use object::elf::*;
-use object::read::elf::{ElfFile64, FileHeader, ProgramHeader, SectionHeader};
 
 /// Injects a code cave into `elf` according to `opts`, returning modified bytes and [`CaveInfo`].
 pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> {
@@ -48,7 +49,6 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         .iter()
         .position(|s| s.sh_type(endian) == SHT_SYMTAB);
 
-    // `.symtab` carries the index of its associated `.strtab` in `sh_link`.
     let strtab_idx = symtab_idx.map(|i| sections[i].sh_link(endian) as usize);
 
     // ── Build new shstrtab ────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
     let old_shstrtab_sz = old_shstrtab_sh.sh_size(endian) as usize;
     let old_shstrtab = &elf.data[old_shstrtab_off..old_shstrtab_off + old_shstrtab_sz];
 
-    // The cave section name is appended at the current end of the table.
+    // The cave section name is appended at the current end of the table
     let cave_shname_offset = old_shstrtab_sz as u32;
     let mut new_shstrtab = old_shstrtab.to_vec();
 
@@ -67,7 +67,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
 
     // ── Build new strtab ──────────────────────────────────────────────────────
 
-    // Synthesise a symbol name derived from the section name, e.g. `.cave` → `caverfn_cave`.
+    // Synthesise a symbol name derived from the section name, e.g. `.cave` → `caverfn_cave`
     let sym_name = format!("caverfn_{}", opts.name.trim_start_matches('.'));
 
     let (new_strtab, sym_name_offset) = if let Some(idx) = strtab_idx {
@@ -80,7 +80,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         st.push(0u8);
         (st, name_off)
     } else {
-        // No existing strtab — create a minimal one (leading null + name).
+        // No existing strtab — create a minimal one (leading null + name)
         let mut st = vec![0u8];
         let name_off = 1u32;
         st.extend_from_slice(sym_name.as_bytes());
@@ -90,7 +90,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
 
     // ── Build new symtab ──────────────────────────────────────────────────────
 
-    // `st_info = (STB_GLOBAL << 4) | STT_FUNC` per the ELF64 ST_INFO macro.
+    // `st_info = (STB_GLOBAL << 4) | STT_FUNC` per the ELF64 ST_INFO macro
     let new_sym = build_sym64(
         sym_name_offset,
         cave_vma,
@@ -108,7 +108,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         st.extend_from_slice(&new_sym);
         st
     } else {
-        // No existing symtab — create one with a mandatory null entry followed by the new symbol.
+        // No existing symtab — create one with a mandatory null entry followed by the new symbol
         let mut st = vec![0u8; 24];
         st.extend_from_slice(&new_sym);
         st
@@ -130,7 +130,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
     let new_strtab_offset = new_shstrtab_offset + new_shstrtab.len() as u64;
     let new_symtab_offset = new_strtab_offset + new_strtab.len() as u64;
 
-    // +1 for the cave section itself; +2 more if we're creating strtab/symtab from scratch.
+    // +1 for the cave section itself; +2 more if we're creating strtab/symtab from scratch
     let extra_shdrs: u64 = 1 + if symtab_idx.is_none() { 2 } else { 0 };
     let new_shdr_table_offset = new_symtab_offset + new_symtab.len() as u64;
 
@@ -143,7 +143,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
 
     for (i, sh) in sections.iter().enumerate() {
         if i == shstrndx {
-            // Redirect shstrtab to its new location and updated size.
+            // Redirect shstrtab to its new location and updated size
             new_shdr_table.extend_from_slice(&build_shdr(
                 sh.sh_name(endian),
                 sh.sh_type(endian),
@@ -157,7 +157,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
                 sh.sh_entsize(endian) as u64,
             ));
         } else if Some(i) == strtab_idx {
-            // Redirect strtab to its new location and updated size.
+            // Redirect strtab to its new location and updated size
             new_shdr_table.extend_from_slice(&build_shdr(
                 sh.sh_name(endian),
                 sh.sh_type(endian),
@@ -171,7 +171,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
                 sh.sh_entsize(endian) as u64,
             ));
         } else if Some(i) == symtab_idx {
-            // Redirect symtab; update sh_link to point at the (possibly new) strtab shndx.
+            // Redirect symtab; update sh_link to point at the (possibly new) strtab shndx
             new_shdr_table.extend_from_slice(&build_shdr(
                 sh.sh_name(endian),
                 SHT_SYMTAB,
@@ -189,7 +189,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         }
     }
 
-    // Append section header for the cave itself.
+    // Append section header for the cave itself
     new_shdr_table.extend_from_slice(&build_shdr(
         cave_shname_offset,
         SHT_PROGBITS,
@@ -203,7 +203,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
         0,
     ));
 
-    // If no symtab existed, append fresh strtab and symtab section headers.
+    // If no symtab existed, append fresh strtab and symtab section headers
     if symtab_idx.is_none() {
         new_shdr_table.extend_from_slice(&build_shdr(
             0,
@@ -256,10 +256,10 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<(Vec<u8>, CaveInfo)> 
 
     // ── Patch ELF header ──────────────────────────────────────────────────────
 
-    // e_phoff  (offset 32): new phdr table is appended right after the original image.
-    // e_shoff  (offset 40): shdr table is at the very end.
-    // e_phnum  (offset 56): one extra phdr for the cave LOAD segment.
-    // e_shnum  (offset 60): original count plus the extra section(s) we appended.
+    // e_phoff  (offset 32): new phdr table is appended right after the original image
+    // e_shoff  (offset 40): shdr table is at the very end
+    // e_phnum  (offset 56): one extra phdr for the cave LOAD segment
+    // e_shnum  (offset 60): original count plus the extra section(s) we appended
     write_u64_le(&mut out, 32, new_phdr_table_offset);
     write_u64_le(&mut out, 40, new_shdr_table_offset);
     write_u16_le(&mut out, 56, (phdr_count + 1) as u16);
