@@ -27,5 +27,9 @@ codegen-units = 1
 strip = true
 
 [[example]]
-name = "basic"
-path = "examples/basic.rs"
+name = "cave"
+path = "examples/cave.rs"
+
+[[example]]
+name = "recon"
+path = "examples/recon.rs"
