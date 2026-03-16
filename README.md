@@ -71,6 +71,7 @@ fn main() -> caver::error::Result<()> {
     patched.write("./binary_patched")?;
 
     // multiple caves — mix of auto and custom symbol names
+    // default fill byte = ArchNop
     let patched = inject_many(&elf, &[
         CaveOptions::builder()
             .size(512)
@@ -80,6 +81,7 @@ fn main() -> caver::error::Result<()> {
             .size(256)
             .name(".mydata")
             .fill(FillByte::Zero)
+            .symbol("my_cool_data")
             .build()?,
         CaveOptions::builder()
             .size(128)
