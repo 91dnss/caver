@@ -1,8 +1,8 @@
 //! ELF64 parsing and validation helpers.
 
 use crate::arch::Arch;
-use crate::cave::inspection::{ExistingCave, SectionInfo, SegmentInfo, SymbolInfo};
-use crate::cave::inspection::{find_caves, has_symtab, list_sections, list_segments, list_symbols};
+use crate::cave::inspection::ExistingCave;
+use crate::cave::inspection::find_caves;
 use crate::error::{CaverError, Result};
 use object::{Object, ObjectKind};
 use std::path::Path;
@@ -42,34 +42,6 @@ impl ElfFile {
     /// Returns a parsed [`object::File`] view over raw bytes.
     pub fn parsed(&self) -> Result<object::File<'_>> {
         Ok(object::File::parse(self.data.as_slice())?)
-    }
-
-    /// Returns all sections in this binary.
-    pub fn sections(&self) -> Result<Vec<SectionInfo>> {
-        list_sections(self)
-    }
-
-    /// Returns all segments in this binary.
-    pub fn segments(&self) -> Result<Vec<SegmentInfo>> {
-        list_segments(self)
-    }
-
-    /// Returns all symbols from `.symtab`, in symbol-table order.
-    ///
-    /// Returns an empty `Vec` for stripped binaries. The null symbol at
-    /// index 0 is omitted. Use [`ElfFile::is_stripped`] to distinguish
-    /// "no symbols" from "stripped".
-    pub fn symbols(&self) -> Result<Vec<SymbolInfo>> {
-        list_symbols(self)
-    }
-
-    /// Returns `true` if the binary has no `.symtab` section.
-    ///
-    /// Note: a stripped binary may still have `.dynsym` for dynamic linking.
-    /// This method only considers `.symtab`, which is the debug/static symbol
-    /// table removed by `strip`.
-    pub fn is_stripped(&self) -> Result<bool> {
-        Ok(!has_symtab(self)?)
     }
 
     /// Scans for runs of uniform bytes at least `min_size` long.
