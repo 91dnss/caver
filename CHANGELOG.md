@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.0] - 2025-xx-xx
+## [0.3.0] - 2026-16-03
 
 ### Added
 - `CaveInfo::symbol` — resolved symbol name as written into the ELF symbol table
