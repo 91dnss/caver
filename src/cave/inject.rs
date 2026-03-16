@@ -430,11 +430,16 @@ pub fn inject_many(elf: &ElfFile, opts: &[CaveOptions]) -> Result<PatchedElf> {
     }
 
     // Check for duplicates within the batch itself
-    let mut seen = std::collections::HashSet::new();
+    let mut seen_names = std::collections::HashSet::new();
+    let mut seen_symbols = std::collections::HashSet::new();
 
     for opt in opts {
-        if !seen.insert(&opt.name) {
+        if !seen_names.insert(&opt.name) {
             return Err(CaverError::DuplicateSectionName(opt.name.clone()));
+        }
+
+        if !seen_symbols.insert(opt.symbol_name()) {
+            return Err(CaverError::DuplicateSymbolName(opt.symbol_name()));
         }
     }
 
