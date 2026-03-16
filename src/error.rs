@@ -32,6 +32,10 @@ pub enum CaverError {
     /// Output validation failed: {0}.
     #[error("output validation failed: {0}")]
     ValidationFailed(String),
+
+    /// Section name {0:?} already exists in binary.
+    #[error("section name {0:?} already exists in binary")]
+    DuplicateSectionName(String),
 }
 
 /// Convenience alias used throughout the crate.
