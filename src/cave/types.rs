@@ -100,14 +100,16 @@ pub struct CaveInfo {
     pub size: usize,
     /// Name of the cave section.
     pub name: String,
+    /// Symbol name of the cave section.
+    pub symbol: String,
 }
 
 impl std::fmt::Display for CaveInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} vma={:#x} offset={:#x} size={}",
-            self.name, self.vma, self.offset, self.size
+            "{} symbol={} vma={:#x} offset={:#x} size={}",
+            self.name, self.symbol, self.vma, self.offset, self.size
         )
     }
 }

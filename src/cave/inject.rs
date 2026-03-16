@@ -409,6 +409,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
         offset: cave_file_offset,
         size: opts.size,
         name: opts.name.clone(),
+        symbol: sym_name.clone(),
     };
 
     validate_output(
