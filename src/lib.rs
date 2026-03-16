@@ -1,3 +1,5 @@
+#![deny(missing_docs)]
+
 //! caver — ELF64 code cave injection library.
 
 pub mod arch;

@@ -44,14 +44,19 @@ impl ElfFile {
         Ok(object::File::parse(self.data.as_slice())?)
     }
 
+    /// Returns all sections in this binary.
     pub fn sections(&self) -> Result<Vec<SectionInfo>> {
         list_sections(self)
     }
 
+    /// Returns all segments in this binary.
     pub fn segments(&self) -> Result<Vec<SegmentInfo>> {
         list_segments(self)
     }
 
+    /// Scans for runs of uniform bytes at least `min_size` long.
+    ///
+    /// Results are sorted by size descending. See [`ExistingCave`] for details.
     pub fn find_caves(&self, min_size: usize) -> Result<Vec<ExistingCave>> {
         find_caves(self, min_size)
     }

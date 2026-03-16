@@ -134,6 +134,11 @@ pub fn build_sym64(
     b
 }
 
+/// Resolves the true section name string table index from the ELF header.
+///
+/// When `e_shstrndx == SHN_XINDEX` the real index is stored in `sh_link`
+/// of section header 0. Returns [`CaverError::NotElf64`] if section 0
+/// is absent.
 pub fn resolve_shstrndx(
     endian: Endianness,
     elf_header: &FileHeader64<Endianness>,

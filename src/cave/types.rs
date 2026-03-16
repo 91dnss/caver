@@ -97,21 +97,25 @@ pub struct CaveOptionsBuilder {
 }
 
 impl CaveOptionsBuilder {
+    /// Sets the cave size in bytes. Must be greater than zero.
     pub fn size(mut self, size: usize) -> Self {
         self.size = Some(size);
         self
     }
 
+    /// Sets the ELF section name. Must start with '.'.
     pub fn name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self
     }
 
+    /// Sets the fill pattern. Defaults to [`FillByte::ArchNop`] if not called.
     pub fn fill(mut self, fill: FillByte) -> Self {
         self.fill = Some(fill);
         self
     }
 
+    /// Validates and builds the [`CaveOptions`].
     pub fn build(self) -> Result<CaveOptions> {
         let size = self.size.ok_or(CaverError::InvalidCaveSize)?;
         let name = self.name.ok_or(CaverError::InvalidCaveName)?;
