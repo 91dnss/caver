@@ -7,7 +7,7 @@ use super::binary::{
 };
 use super::types::PatchedElf;
 use super::types::{CaveInfo, CaveOptions};
-use crate::cave::inspection::list_sections;
+use crate::cave::inspection::{list_sections, list_segments};
 use crate::elf::ElfFile;
 use crate::error::{CaverError, Result};
 use object::Endianness;
@@ -63,6 +63,29 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
 
     let align: u64 = 0x1000;
     let cave_vma = align_up(last_load.p_vaddr(endian) + last_load.p_memsz(endian), align);
+    let cave_size = opts.size as u64;
+
+    // Validate cave size alignment for multi-byte NOP architectures
+    let arch = elf.arch()?;
+    let nop_len = arch.nop_fill().len() as u64;
+
+    if nop_len > 1 && cave_size % nop_len != 0 {
+        return Err(CaverError::UnalignedCaveSize(opts.size, nop_len as usize));
+    }
+
+    // Validate cave VMA doesn't overlap any existing segment
+    for seg in list_segments(elf)? {
+        if seg.memsz == 0 {
+            continue;
+        }
+
+        let seg_end = seg.vma + seg.memsz;
+        let cave_end = cave_vma + cave_size;
+
+        if cave_vma < seg_end && cave_end > seg.vma {
+            return Err(CaverError::VmaOverlap(cave_vma, seg.vma));
+        }
+    }
 
     // ── Section headers & string tables ──────────────────────────────────────
 
@@ -144,7 +167,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
     let new_sym = build_sym64(
         sym_name_offset,
         cave_vma,
-        opts.size as u64,
+        cave_size,
         (STB_GLOBAL << 4) | opts.fill.sym_type(),
         STV_DEFAULT,
         (shdr_count + 1) as u16,
@@ -170,7 +193,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
     let dyn_sym = build_sym64(
         dyn_sym_name_offset,
         cave_vma,
-        opts.size as u64,
+        cave_size,
         (STB_GLOBAL << 4) | opts.fill.sym_type(),
         STV_DEFAULT,
         (shdr_count + 1) as u16,
@@ -190,10 +213,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
 
     // ── Layout ───────────────────────────────────────────────────────────────
 
-    let new_phdr_table_offset = orig_len;
-    let new_phdr_table_size = (phdr_count as u64 + 1) * PHDR_SIZE;
     let cave_file_offset = new_phdr_table_offset + new_phdr_table_size;
-    let cave_size = opts.size as u64;
 
     let new_shstrtab_offset = cave_file_offset + cave_size;
     let new_strtab_offset = new_shstrtab_offset + new_shstrtab.len() as u64;
