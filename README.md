@@ -2,7 +2,6 @@
 
 [![Crates.io](https://img.shields.io/crates/v/caver)](https://crates.io/crates/caver)
 [![docs.rs](https://img.shields.io/docsrs/caver)](https://docs.rs/caver)
-[![CI](https://github.com/91dnss/caver/actions/workflows/ci.yml/badge.svg)](https://github.com/91dnss/caver/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ELF64 code cave injection library for Rust.
