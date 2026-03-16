@@ -119,14 +119,13 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
 
     // ── Build new symtab ──────────────────────────────────────────────────────
 
-    // `st_info = (STB_GLOBAL << 4) | STT_FUNC` per the ELF64 ST_INFO macro
     let new_sym = build_sym64(
         sym_name_offset,
         cave_vma,
         opts.size as u64,
-        (STB_GLOBAL << 4) | STT_FUNC,
+        (STB_GLOBAL << 4) | opts.fill.sym_type(),
         STV_DEFAULT,
-        (shdr_count + 1) as u16, // shndx of the cave section, appended below
+        (shdr_count + 1) as u16,
     );
 
     let new_symtab = if let Some(idx) = symtab_idx {

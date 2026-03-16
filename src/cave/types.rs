@@ -2,6 +2,7 @@
 
 use crate::arch::Arch;
 use crate::error::{CaverError, Result};
+use object::elf::{STT_FUNC, STT_OBJECT};
 use std::path::Path;
 
 /// Fill pattern used to populate the code cave.
@@ -17,17 +18,19 @@ pub enum FillByte {
 }
 
 impl FillByte {
-    /// Returns the raw byte value for this fill pattern.
-    pub fn value(self) -> &'static [u8] {
-        // Backward-compatible default while only x86_64 is supported
-        self.fill_bytes_for(Arch::X86_64)
-    }
-
     /// Returns the raw byte value for this fill pattern for `arch`.
-    pub fn fill_bytes_for(self, arch: Arch) -> &'static [u8] {
+    pub(crate) fn fill_bytes_for(self, arch: Arch) -> &'static [u8] {
         match self {
             FillByte::ArchNop => arch.nop_fill(),
             FillByte::Zero => &[0x00],
+        }
+    }
+
+    /// Returns the ELF symbol type for this fill pattern.
+    pub(crate) fn sym_type(self) -> u8 {
+        match self {
+            FillByte::ArchNop => STT_FUNC,
+            FillByte::Zero => STT_OBJECT,
         }
     }
 }
