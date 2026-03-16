@@ -36,6 +36,14 @@ pub enum CaverError {
     /// Section name {0:?} already exists in binary.
     #[error("section name {0:?} already exists in binary")]
     DuplicateSectionName(String),
+
+    /// Cave size {0} is not a multiple of {1} (required for this architecture).
+    #[error("cave size {0} is not a multiple of {1} (required for this architecture)")]
+    UnalignedCaveSize(usize, usize),
+
+    /// Cave VMA {0:#x} overlaps existing segment at {1:#x}.
+    #[error("cave VMA {0:#x} overlaps existing segment at {1:#x}")]
+    VmaOverlap(u64, u64),
 }
 
 /// Convenience alias used throughout the crate.
