@@ -41,6 +41,8 @@ pub struct CaveOptions {
     pub name: String,
     /// Byte pattern to fill the cave with.
     pub fill: FillByte,
+    /// Optional symbol name override.
+    pub symbol: Option<String>,
 }
 
 impl CaveOptions {
@@ -61,7 +63,26 @@ impl CaveOptions {
             return Err(CaverError::InvalidCaveName);
         }
 
-        Ok(Self { size, name, fill })
+        Ok(Self {
+            size,
+            name,
+            fill,
+            symbol: None,
+        })
+    }
+
+    /// Derives the symbol name from options, using override if set.
+    pub(crate) fn symbol_name(&self) -> String {
+        if let Some(ref s) = self.symbol {
+            return s.clone();
+        }
+
+        let base = self.name.trim_start_matches('.');
+
+        match self.fill {
+            FillByte::ArchNop => format!("caverfn_{base}"),
+            FillByte::Zero => format!("caverobj_{base}"),
+        }
     }
 }
 
@@ -94,6 +115,7 @@ pub struct CaveOptionsBuilder {
     size: Option<usize>,
     name: Option<String>,
     fill: Option<FillByte>,
+    symbol: Option<String>,
 }
 
 impl CaveOptionsBuilder {
@@ -115,13 +137,25 @@ impl CaveOptionsBuilder {
         self
     }
 
+    /// Overrides the auto-generated symbol name.
+    ///
+    /// If not set, the symbol is derived from the section name:
+    /// `caverfn_<name>` for [`FillByte::ArchNop`] and `caverobj_<name>`
+    /// for [`FillByte::Zero`].
+    pub fn symbol(mut self, symbol: impl Into<String>) -> Self {
+        self.symbol = Some(symbol.into());
+        self
+    }
+
     /// Validates and builds the [`CaveOptions`].
     pub fn build(self) -> Result<CaveOptions> {
         let size = self.size.ok_or(CaverError::InvalidCaveSize)?;
         let name = self.name.ok_or(CaverError::InvalidCaveName)?;
         let fill = self.fill.unwrap_or(FillByte::ArchNop);
+        let mut opts = CaveOptions::new(size, name, fill)?;
+        opts.symbol = self.symbol;
 
-        CaveOptions::new(size, name, fill)
+        Ok(opts)
     }
 }
 

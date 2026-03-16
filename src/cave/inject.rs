@@ -88,8 +88,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
 
     // ── Build new strtab ──────────────────────────────────────────────────────
 
-    // Synthesise a symbol name derived from the section name, e.g. `.cave` → `caverfn_cave`
-    let sym_name = format!("caverfn_{}", opts.name.trim_start_matches('.'));
+    let sym_name = opts.symbol_name();
 
     let (new_strtab, sym_name_offset) = if let Some(idx) = strtab_idx {
         let sh = &sections[idx];
