@@ -68,10 +68,10 @@ caver = "0.1"
 use caver::cave::{CaveOptions, FillByte, inject};
 use caver::elf::ElfFile;
 
-fn main() -> caver::error::Result {
+fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
-    let opts = CaveOptions::default()
+    let opts = CaveOptions::builder()
         .size(512)
         .name(".mycode")
         .fill(FillByte::ArchNop)
@@ -90,12 +90,12 @@ fn main() -> caver::error::Result {
 use caver::cave::{CaveOptions, FillByte, inject_many};
 use caver::elf::ElfFile;
 
-fn main() -> caver::error::Result {
+fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
     let patched = inject_many(&elf, &[
-        CaveOptions::default().size(512).name(".mycode").build()?,
-        CaveOptions::default().size(256).name(".mydata").fill(FillByte::Zero).build()?,
+        CaveOptions::builder().size(512).name(".mycode").build()?,
+        CaveOptions::builder().size(256).name(".mydata").fill(FillByte::Zero).build()?,
     ])?;
 
     for info in patched.infos() {
