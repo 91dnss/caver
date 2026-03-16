@@ -1,21 +1,28 @@
 //! Code cave construction and LOAD segment injection.
 
 use super::binary::resolve_shstrndx;
-use super::types::PatchedElf;
-use object::Endianness;
-use object::elf::*;
-use object::read::elf::{ElfFile64, FileHeader, ProgramHeader, SectionHeader};
-
 use super::binary::{
     PHDR_SIZE, SHDR_SIZE, align_up, build_shdr, build_sym64, make_phdr, serialise_phdr,
     serialise_shdr, write_u16_le, write_u64_le,
 };
+use super::types::PatchedElf;
 use super::types::{CaveInfo, CaveOptions};
+use crate::cave::inspection::list_sections;
 use crate::elf::ElfFile;
 use crate::error::{CaverError, Result};
+use object::Endianness;
+use object::elf::*;
+use object::read::elf::{ElfFile64, FileHeader, ProgramHeader, SectionHeader};
 
 /// Injects a code cave into `elf` according to `opts`, returning modified bytes and [`CaveInfo`].
 pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
+    // Validate section name is unique
+    let existing = list_sections(elf)?;
+
+    if existing.iter().any(|s| s.name == opts.name) {
+        return Err(CaverError::DuplicateSectionName(opts.name.clone()));
+    }
+
     let parsed = ElfFile64::<Endianness>::parse(elf.data.as_slice())?;
     let endian = parsed.endian();
 
@@ -35,7 +42,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
                     PT_PHDR,
                     ph.p_flags(endian),
                     new_phdr_table_offset,
-                    new_phdr_table_offset, // vaddr == offset for non-PIE; good enough
+                    new_phdr_table_offset,
                     new_phdr_table_offset,
                     new_phdr_table_size,
                     new_phdr_table_size,
@@ -311,9 +318,20 @@ pub fn inject_many(elf: &ElfFile, opts: &[CaveOptions]) -> Result<PatchedElf> {
         return Ok(PatchedElf::new(elf.data.clone(), vec![]));
     }
 
+    // Check for duplicates within the batch itself
+    let mut seen = std::collections::HashSet::new();
+
+    for opt in opts {
+        if !seen.insert(&opt.name) {
+            return Err(CaverError::DuplicateSectionName(opt.name.clone()));
+        }
+    }
+
     let mut infos = Vec::with_capacity(opts.len());
     let first = inject(elf, &opts[0])?;
+
     infos.push(first.infos[0].clone());
+
     let mut bytes = first.data;
 
     for opt in &opts[1..] {
