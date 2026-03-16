@@ -44,6 +44,10 @@ pub enum CaverError {
     /// Cave VMA {0:#x} overlaps existing segment at {1:#x}.
     #[error("cave VMA {0:#x} overlaps existing segment at {1:#x}")]
     VmaOverlap(u64, u64),
+
+    /// Symbol name {0:?} already exists in binary.
+    #[error("symbol name {0:?} already exists in binary")]
+    DuplicateSymbolName(String),
 }
 
 /// Convenience alias used throughout the crate.
