@@ -59,6 +59,10 @@ fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
     // single cave — auto-generated symbol name
+    // default fill byte = ArchNop
+    // size() is required
+    // name() is required
+    // symbol() is optional
     let patched = inject(
         &elf,
         &CaveOptions::builder()
@@ -71,7 +75,6 @@ fn main() -> caver::error::Result<()> {
     patched.write("./binary_patched")?;
 
     // multiple caves — mix of auto and custom symbol names
-    // default fill byte = ArchNop
     let patched = inject_many(&elf, &[
         CaveOptions::builder()
             .size(512)
@@ -80,7 +83,7 @@ fn main() -> caver::error::Result<()> {
         CaveOptions::builder()
             .size(256)
             .name(".mydata")
-            .fill(FillByte::Zero)
+            .fill(FillByte::Zero) // data cave
             .symbol("my_cool_data")
             .build()?,
         CaveOptions::builder()
