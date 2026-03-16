@@ -69,7 +69,7 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
     let arch = elf.arch()?;
     let nop_len = arch.nop_fill().len() as u64;
 
-    if nop_len > 1 && cave_size % nop_len != 0 {
+    if !cave_size.is_multiple_of(nop_len) {
         return Err(CaverError::UnalignedCaveSize(opts.size, nop_len as usize));
     }
 
