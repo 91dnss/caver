@@ -45,7 +45,7 @@ pub struct CaveOptions {
 
 impl CaveOptions {
     /// Creates a new [`CaveOptions`] using the builder API.
-    pub fn default() -> CaveOptionsBuilder {
+    pub fn builder() -> CaveOptionsBuilder {
         CaveOptionsBuilder::default()
     }
 
@@ -137,7 +137,6 @@ impl PatchedElf {
     }
 
     /// Returns metadata for the single injected cave.
-    /// Use [`infos`] for multiple caves.
     pub fn info(&self) -> &CaveInfo {
         &self.infos[0]
     }

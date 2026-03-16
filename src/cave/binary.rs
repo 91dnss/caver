@@ -40,6 +40,7 @@ pub fn serialise_phdr(ph: &ProgramHeader64<Endianness>, e: Endianness) -> Vec<u8
 ///
 /// `p_paddr` is set equal to `p_vaddr` for the injected LOAD segment since
 /// physical addressing is not meaningful on Linux x86-64.
+#[allow(clippy::too_many_arguments)]
 pub fn make_phdr(
     p_type: u32,
     p_flags: u32,
@@ -69,14 +70,14 @@ pub fn serialise_shdr(sh: &SectionHeader64<Endianness>, e: Endianness) -> Vec<u8
     build_shdr(
         sh.sh_name(e),
         sh.sh_type(e),
-        sh.sh_flags(e) as u64,
-        sh.sh_addr(e) as u64,
+        sh.sh_flags(e),
+        sh.sh_addr(e),
         sh.sh_offset(e),
         sh.sh_size(e),
         sh.sh_link(e),
         sh.sh_info(e),
-        sh.sh_addralign(e) as u64,
-        sh.sh_entsize(e) as u64,
+        sh.sh_addralign(e),
+        sh.sh_entsize(e),
     )
 }
 
@@ -146,7 +147,7 @@ pub fn resolve_shstrndx(
 ) -> Result<usize, CaverError> {
     let raw = elf_header.e_shstrndx(endian);
 
-    if raw != SHN_XINDEX as u16 {
+    if raw != SHN_XINDEX {
         return Ok(raw as usize);
     }
 

@@ -12,7 +12,7 @@ use crate::cave::binary::resolve_shstrndx;
 use crate::elf::ElfFile;
 use crate::error::{CaverError, Result};
 
-/// A single ELF64 section as reported by [`list_sections`].
+/// A single ELF64 section.
 #[derive(Debug, Clone)]
 pub struct SectionInfo {
     /// Section name, resolved from `.shstrtab`.
@@ -76,17 +76,17 @@ pub(crate) fn list_sections(elf: &ElfFile) -> Result<Vec<SectionInfo>> {
 
             Ok(SectionInfo {
                 name,
-                vma: sh.sh_addr(endian) as u64,
+                vma: sh.sh_addr(endian),
                 offset: sh.sh_offset(endian),
                 size: sh.sh_size(endian),
                 sh_type: sh.sh_type(endian),
-                sh_flags: sh.sh_flags(endian) as u64,
+                sh_flags: sh.sh_flags(endian),
             })
         })
         .collect()
 }
 
-/// A single ELF64 program header (segment) as reported by [`list_segments`].
+/// A single ELF64 program header (segment).
 #[derive(Debug, Clone)]
 pub struct SegmentInfo {
     /// Segment type (`p_type`), e.g. `PT_LOAD`.

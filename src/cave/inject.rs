@@ -165,41 +165,41 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
             new_shdr_table.extend_from_slice(&build_shdr(
                 sh.sh_name(endian),
                 sh.sh_type(endian),
-                sh.sh_flags(endian) as u64,
-                sh.sh_addr(endian) as u64,
+                sh.sh_flags(endian),
+                sh.sh_addr(endian),
                 new_shstrtab_offset,
                 new_shstrtab.len() as u64,
                 sh.sh_link(endian),
                 sh.sh_info(endian),
-                sh.sh_addralign(endian) as u64,
-                sh.sh_entsize(endian) as u64,
+                sh.sh_addralign(endian),
+                sh.sh_entsize(endian),
             ));
         } else if Some(i) == strtab_idx {
             // Redirect strtab to its new location and updated size
             new_shdr_table.extend_from_slice(&build_shdr(
                 sh.sh_name(endian),
                 sh.sh_type(endian),
-                sh.sh_flags(endian) as u64,
-                sh.sh_addr(endian) as u64,
+                sh.sh_flags(endian),
+                sh.sh_addr(endian),
                 new_strtab_offset,
                 new_strtab.len() as u64,
                 sh.sh_link(endian),
                 sh.sh_info(endian),
-                sh.sh_addralign(endian) as u64,
-                sh.sh_entsize(endian) as u64,
+                sh.sh_addralign(endian),
+                sh.sh_entsize(endian),
             ));
         } else if Some(i) == symtab_idx {
             // Redirect symtab; update sh_link to point at the (possibly new) strtab shndx
             new_shdr_table.extend_from_slice(&build_shdr(
                 sh.sh_name(endian),
                 SHT_SYMTAB,
-                sh.sh_flags(endian) as u64,
+                sh.sh_flags(endian),
                 0,
                 new_symtab_offset,
                 new_symtab.len() as u64,
                 new_strtab_shndx as u32,
                 sh.sh_info(endian),
-                sh.sh_addralign(endian) as u64,
+                sh.sh_addralign(endian),
                 24,
             ));
         } else {
