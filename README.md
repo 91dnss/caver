@@ -55,7 +55,7 @@ If you don't call `.symbol()`, caver derives one from the section name:
 use caver::cave::{CaveOptions, FillByte, inject};
 use caver::elf::ElfFile;
 
-fn main() -> caver::error::Result {
+fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
     let patched = inject(
@@ -81,7 +81,7 @@ fn main() -> caver::error::Result {
 use caver::cave::{CaveOptions, FillByte, inject_many};
 use caver::elf::ElfFile;
 
-fn main() -> caver::error::Result {
+fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
     let patched = inject_many(&elf, &[
@@ -118,7 +118,7 @@ fn main() -> caver::error::Result {
 ```rust
 use caver::elf::ElfFile;
 
-fn main() -> caver::error::Result {
+fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
     // Check if stripped before expecting symbols
