@@ -121,29 +121,6 @@ use caver::elf::ElfFile;
 fn main() -> caver::error::Result<()> {
     let elf = ElfFile::open("./binary")?;
 
-    // Check if stripped before expecting symbols
-    if elf.is_stripped()? {
-        println!("binary is stripped — no .symtab");
-    } else {
-        for sym in elf.symbols()? {
-            println!("{sym}");
-        }
-    }
-
-    // Sections
-    for s in elf.sections()? {
-        if s.is_executable() {
-            println!("executable section: {}", s.name);
-        }
-    }
-
-    // Segments
-    for s in elf.segments()? {
-        if s.is_writable() {
-            println!("writable segment at {:#x}", s.vma);
-        }
-    }
-
     // Scan for existing slack space before deciding to inject
     for cave in elf.find_caves(64)? {
         if cave.is_executable() {
