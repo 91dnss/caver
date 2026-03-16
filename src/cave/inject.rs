@@ -79,6 +79,12 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
 
     let strtab_idx = symtab_idx.map(|i| sections[i].sh_link(endian) as usize);
 
+    let dynsym_idx = sections
+        .iter()
+        .position(|s| s.sh_type(endian) == SHT_DYNSYM);
+
+    let dynstr_idx = dynsym_idx.map(|i| sections[i].sh_link(endian) as usize);
+
     // ── Build new shstrtab ────────────────────────────────────────────────────
 
     let old_shstrtab_sh = sections.get(shstrndx).ok_or(CaverError::NotElf64)?;
@@ -117,6 +123,22 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
         (st, name_off)
     };
 
+    // ── Build new dynstr ──────────────────────────────────────────────────────
+
+    let (new_dynstr, dyn_sym_name_offset) = if let Some(idx) = dynstr_idx {
+        let sh = &sections[idx];
+        let off = sh.sh_offset(endian) as usize;
+        let sz = sh.sh_size(endian) as usize;
+        let mut st = elf.data[off..off + sz].to_vec();
+        let name_off = st.len() as u32;
+
+        st.extend_from_slice(sym_name.as_bytes());
+        st.push(0u8);
+        (Some(st), name_off)
+    } else {
+        (None, 0)
+    };
+
     // ── Build new symtab ──────────────────────────────────────────────────────
 
     let new_sym = build_sym64(
@@ -143,6 +165,29 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
         st
     };
 
+    // ── Build new dynsym ──────────────────────────────────────────────────────
+
+    let dyn_sym = build_sym64(
+        dyn_sym_name_offset,
+        cave_vma,
+        opts.size as u64,
+        (STB_GLOBAL << 4) | opts.fill.sym_type(),
+        STV_DEFAULT,
+        (shdr_count + 1) as u16,
+    );
+
+    let new_dynsym = if let Some(idx) = dynsym_idx {
+        let sh = &sections[idx];
+        let off = sh.sh_offset(endian) as usize;
+        let sz = sh.sh_size(endian) as usize;
+        let mut st = elf.data[off..off + sz].to_vec();
+
+        st.extend_from_slice(&dyn_sym);
+        Some(st)
+    } else {
+        None
+    };
+
     // ── Layout ───────────────────────────────────────────────────────────────
 
     let new_phdr_table_offset = orig_len;
@@ -153,9 +198,12 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
     let new_shstrtab_offset = cave_file_offset + cave_size;
     let new_strtab_offset = new_shstrtab_offset + new_shstrtab.len() as u64;
     let new_symtab_offset = new_strtab_offset + new_strtab.len() as u64;
+    let new_dynstr_offset = new_symtab_offset + new_symtab.len() as u64;
+    let new_dynsym_offset = new_dynstr_offset + new_dynstr.as_ref().map_or(0, |s| s.len() as u64);
 
     let extra_shdrs: u64 = 1 + if symtab_idx.is_none() { 2 } else { 0 };
-    let new_shdr_table_offset = new_symtab_offset + new_symtab.len() as u64;
+    let new_shdr_table_offset =
+        new_dynsym_offset + new_dynsym.as_ref().map_or(0, |s| s.len() as u64);
 
     // ── Build Shdr table ──────────────────────────────────────────────────────
 
@@ -207,6 +255,42 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
                 sh.sh_addralign(endian),
                 24,
             ));
+        } else if Some(i) == dynstr_idx {
+            // Redirect dynstr to its new location and updated size
+            if let Some(ref ds) = new_dynstr {
+                new_shdr_table.extend_from_slice(&build_shdr(
+                    sh.sh_name(endian),
+                    sh.sh_type(endian),
+                    sh.sh_flags(endian),
+                    sh.sh_addr(endian),
+                    new_dynstr_offset,
+                    ds.len() as u64,
+                    sh.sh_link(endian),
+                    sh.sh_info(endian),
+                    sh.sh_addralign(endian),
+                    sh.sh_entsize(endian),
+                ));
+            } else {
+                new_shdr_table.extend_from_slice(&serialise_shdr(sh, endian));
+            }
+        } else if Some(i) == dynsym_idx {
+            // Redirect dynsym; update sh_link to point at dynstr shndx
+            if let Some(ref ds) = new_dynsym {
+                new_shdr_table.extend_from_slice(&build_shdr(
+                    sh.sh_name(endian),
+                    SHT_DYNSYM,
+                    sh.sh_flags(endian),
+                    sh.sh_addr(endian),
+                    new_dynsym_offset,
+                    ds.len() as u64,
+                    dynstr_idx.unwrap() as u32,
+                    sh.sh_info(endian),
+                    sh.sh_addralign(endian),
+                    24,
+                ));
+            } else {
+                new_shdr_table.extend_from_slice(&serialise_shdr(sh, endian));
+            }
         } else {
             new_shdr_table.extend_from_slice(&serialise_shdr(sh, endian));
         }
@@ -279,6 +363,14 @@ pub fn inject(elf: &ElfFile, opts: &CaveOptions) -> Result<PatchedElf> {
     out.extend_from_slice(&new_shstrtab);
     out.extend_from_slice(&new_strtab);
     out.extend_from_slice(&new_symtab);
+
+    if let Some(ref ds) = new_dynstr {
+        out.extend_from_slice(ds);
+    }
+    if let Some(ref ds) = new_dynsym {
+        out.extend_from_slice(ds);
+    }
+
     out.extend_from_slice(&new_shdr_table);
 
     // ── Patch ELF header ──────────────────────────────────────────────────────
